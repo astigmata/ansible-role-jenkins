@@ -1,71 +1,67 @@
 ---
-- name: Get Jenkins crumb for API calls
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/crumbIssuer/api/json"
-    method: GET
-    user: "{{ jenkins_admin_user }}"
-    password: "{{ jenkins_admin_password }}"
-    force_basic_auth: true
-    return_content: true
-  register: jenkins_crumb_response
+- name: Download jenkins-cli.jar
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ jenkins_url }}/jnlpJars/jenkins-cli.jar"
+    dest: /tmp/jenkins-cli.jar
+    mode: '0644'
   retries: 3
-  delay: 10
-  until: jenkins_crumb_response.status == 200
+  delay: 5
 
-- name: Set crumb facts
-  ansible.builtin.set_fact:
-    jenkins_crumb_field: "{{ jenkins_crumb_response.json.crumbRequestField }}"
-    jenkins_crumb_value: "{{ jenkins_crumb_response.json.crumb }}"
-
-- name: Check installed plugins
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/pluginManager/api/json?depth=1"
-    method: GET
-    user: "{{ jenkins_admin_user }}"
-    password: "{{ jenkins_admin_password }}"
-    force_basic_auth: true
-    return_content: true
-  register: jenkins_installed_plugins
+- name: Check installed plugins via CLI
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }}
+      -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
+      list-plugins --format csv
+  register: jenkins_installed_plugins_cli
+  changed_when: false
+  failed_when: false
 
 - name: Set fact for installed plugin names
   ansible.builtin.set_fact:
-    jenkins_installed_plugin_names: "{{ jenkins_installed_plugins.json.plugins | map(attribute='shortName') | list }}"
+    jenkins_installed_plugin_names: >-
+      {{
+        jenkins_installed_plugins_cli.stdout_lines
+        | default([])
+        | map('regex_replace', '^([^,]+),.*', '\1')
+        | list
+      }}
 
-- name: Install Jenkins plugins
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/pluginManager/installNecessaryPlugins"
-    method: POST
-    user: "{{ jenkins_admin_user }}"
-    password: "{{ jenkins_admin_password }}"
-    force_basic_auth: true
-    headers:
-      Content-Type: "application/x-www-form-urlencoded"
-      "{{ jenkins_crumb_field }}": "{{ jenkins_crumb_value }}"
-    body_format: form-urlencoded
-    body:
-      plugin.{{ item }}.default: "on"
-    status_code: [200, 302]
-    timeout: "{{ jenkins_plugins_timeout }}"
+- name: Install Jenkins plugins via CLI
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }}
+      -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
+      install-plugin {{ item }}
   loop: "{{ jenkins_plugins }}"
   when: item not in jenkins_installed_plugin_names
-  register: jenkins_plugin_install
+  register: jenkins_plugin_install_cli
+  changed_when: "'installed' in jenkins_plugin_install_cli.stdout or jenkins_plugin_install_cli.rc == 0"
+  failed_when: jenkins_plugin_install_cli.rc != 0 and 'already installed' not in jenkins_plugin_install_cli.stderr
   notify:
     - restart jenkins
 
-- name: Wait for plugin installation to complete
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/updateCenter/api/json"
-    method: GET
-    user: "{{ jenkins_admin_user }}"
-    password: "{{ jenkins_admin_password }}"
-    force_basic_auth: true
-    return_content: true
-  register: jenkins_update_center
-  retries: 60
-  delay: 5
-  until: jenkins_update_center.json.jobs | length == 0
-  when: jenkins_plugin_install is changed
-
-- name: Restart Jenkins after plugin installation
+- name: Restart Jenkins if plugins were installed
   ansible.builtin.meta: flush_handlers
-  when: jenkins_plugin_install is changed
+  when: jenkins_plugin_install_cli is changed
+
+- name: Wait for Jenkins after plugin installation
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/login"
+    method: GET
+    status_code: [200, 403]
+    timeout: 10
+  register: jenkins_service_status
+  retries: 30
+  delay: 10
+  until: jenkins_service_status.status in [200, 403]
+  when: jenkins_plugin_install_cli is changed
+
+- name: Clean up jenkins-cli.jar
+  become: true
+  ansible.builtin.file:
+    path: /tmp/jenkins-cli.jar
+    state: absent
