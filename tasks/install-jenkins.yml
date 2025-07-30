@@ -1,0 +1,67 @@
+---
+- name: Install Jenkins package
+  become: true
+  ansible.builtin.package:
+    name: jenkins
+    state: present
+  notify:
+    - Restart jenkins
+
+- name: Create Jenkins directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+  loop:
+    - /var/lib/jenkins
+    - /var/lib/jenkins/init.groovy.d
+    - /var/log/jenkins
+
+- name: Configure Jenkins startup options
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ jenkins_defaults_file }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: true
+    create: true
+  loop:
+    - regexp: '^JAVA_ARGS='
+      line: 'JAVA_ARGS="{{ jenkins_java_options }}"'
+    - regexp: '^HTTP_HOST='
+      line: 'HTTP_HOST=0.0.0.0'
+    - regexp: '^HTTP_PORT='
+      line: 'HTTP_PORT={{ jenkins_port }}'
+  vars:
+    jenkins_defaults_file: >-
+      {%- if ansible_os_family == 'Debian' -%}
+      /etc/default/jenkins
+      {%- elif ansible_os_family == 'RedHat' -%}
+      /etc/sysconfig/jenkins
+      {%- else -%}
+      /etc/default/jenkins
+      {%- endif -%}
+  notify:
+    - Restart jenkins
+
+- name: Disable setup wizard
+  become: true
+  ansible.builtin.copy:
+    content: "{{ jenkins_version | default('2.500.0') }}"
+    dest: /var/lib/jenkins/jenkins.install.InstallUtil.lastExecVersion
+    owner: jenkins
+    group: jenkins
+    mode: '0644'
+  notify:
+    - Restart jenkins
+
+- name: Start and enable Jenkins service
+  become: true
+  ansible.builtin.systemd:
+    name: jenkins
+    state: "{{ jenkins_service_state }}"
+    enabled: "{{ jenkins_service_enabled }}"
+    daemon_reload: true

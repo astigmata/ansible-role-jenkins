@@ -1,0 +1,67 @@
+---
+- name: Download jenkins-cli.jar
+  become: true
+  ansible.builtin.get_url:
+    url: "{{ jenkins_url }}/jnlpJars/jenkins-cli.jar"
+    dest: /tmp/jenkins-cli.jar
+    mode: '0644'
+  retries: 3
+  delay: 5
+
+- name: Check installed plugins via CLI
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }}
+      -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
+      list-plugins --format csv
+  register: jenkins_installed_plugins_cli
+  changed_when: false
+  failed_when: false
+
+- name: Set fact for installed plugin names
+  ansible.builtin.set_fact:
+    jenkins_installed_plugin_names: >-
+      {{
+        jenkins_installed_plugins_cli.stdout_lines
+        | default([])
+        | map('regex_replace', '^([^,]+),.*', '\1')
+        | list
+      }}
+
+- name: Install Jenkins plugins via CLI
+  become: true
+  ansible.builtin.command:
+    cmd: >
+      java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }}
+      -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
+      install-plugin {{ item }}
+  loop: "{{ jenkins_plugins }}"
+  when: item not in jenkins_installed_plugin_names
+  register: jenkins_plugin_install_cli
+  changed_when: "'installed' in jenkins_plugin_install_cli.stdout or jenkins_plugin_install_cli.rc == 0"
+  failed_when: jenkins_plugin_install_cli.rc != 0 and 'already installed' not in jenkins_plugin_install_cli.stderr
+  notify:
+    - Restart jenkins
+
+- name: Restart jenkins if plugins were installed
+  ansible.builtin.meta: flush_handlers
+  when: jenkins_plugin_install_cli is changed
+
+- name: Wait for jenkins after plugin installation
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/login"
+    method: GET
+    status_code: [200, 403]
+    timeout: 10
+  register: jenkins_service_status
+  retries: 30
+  delay: 10
+  until: jenkins_service_status.status in [200, 403]
+  when: jenkins_plugin_install_cli is changed
+
+- name: Clean up jenkins-cli.jar
+  become: true
+  ansible.builtin.file:
+    path: /tmp/jenkins-cli.jar
+    state: absent

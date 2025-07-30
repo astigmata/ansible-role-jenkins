@@ -1,0 +1,38 @@
+---
+# Jenkins admin configuration
+jenkins_admin_user: admin
+jenkins_admin_password: "{{ vault_jenkins_admin_password | default('changeme123!') }}"
+
+# Jenkins service configuration
+jenkins_port: 8080
+jenkins_host: "{{ ansible_default_ipv4.address | default('localhost') }}"
+jenkins_url: "http://{{ jenkins_host }}:{{ jenkins_port }}"
+jenkins_prefix: ""
+
+# Java configuration
+jenkins_java_options: "-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Xmx2g"
+
+# Plugin management
+jenkins_plugins:
+  - git
+  - workflow-aggregator
+  - pipeline-stage-view
+  - credentials-binding
+  - timestamper
+  - ws-cleanup
+
+jenkins_plugins_install_dependencies: true
+jenkins_plugins_timeout: 300
+
+# Security settings
+jenkins_security_realm: "HudsonPrivateSecurityRealm"
+jenkins_authorization_strategy: "FullControlOnceLoggedInAuthorizationStrategy"
+jenkins_anonymous_access: false
+
+# Repository configuration
+jenkins_repo_key_url: "https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key"
+jenkins_repo_url: "https://pkg.jenkins.io/debian-stable"
+
+# Service management
+jenkins_service_enabled: true
+jenkins_service_state: started

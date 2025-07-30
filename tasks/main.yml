@@ -1,0 +1,15 @@
+---
+- name: Include preflight checks
+  ansible.builtin.import_tasks: preflight-check.yml
+
+- name: Include Jenkins installation
+  ansible.builtin.import_tasks: install-jenkins.yml
+
+- name: Include Jenkins configuration
+  ansible.builtin.import_tasks: configure-jenkins.yml
+
+- name: Include plugin installation
+  ansible.builtin.import_tasks: install-plugins.yml
+
+- name: Include final verification
+  ansible.builtin.import_tasks: verify.yml
