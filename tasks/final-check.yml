@@ -1,13 +1,13 @@
 - name: Check if initial admin password exists
   ansible.builtin.stat:
     path: /var/lib/jenkins/secrets/initialAdminPassword
-  register: initial_password_file
+  register: initial_pwd_file
 
 - name: Get initial admin password
   ansible.builtin.slurp:
     src: /var/lib/jenkins/secrets/initialAdminPassword
   register: initial_admin_password
-  when: initial_password_file.stat.exists
+  when: initial_pwd_file.stat.exists
 
 - name: Display access information
   ansible.builtin.debug:
@@ -15,4 +15,4 @@
       - "Jenkins URL: {{ jenkins_url }}"
       - "Username: {{ jenkins_admin_user }}"
       - "Password: {{ jenkins_admin_password }}"
-      - "{% if initial_password_file.stat.exists %}Initial admin password: {{ initial_admin_password.content | b64decode | trim }}{% else %}Initial admin password: Not found (setup wizard disabled){% endif %}"
+      - "{% if initial_pwd_file.stat.exists %}Initial admin password: {{ initial_admin_password.content | b64decode | trim }}{% else %}Not found{% endif %}"

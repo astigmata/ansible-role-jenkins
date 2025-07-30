@@ -1,15 +1,15 @@
-- name: restart jenkins
+- name: Restart jenkins
   ansible.builtin.systemd:
     name: jenkins
     state: restarted
 
-- name: start jenkins
+- name: Start jenkins
   ansible.builtin.systemd:
     name: jenkins
     state: started
     enabled: true
 
-- name: wait for jenkins
+- name: Wait for jenkins
   ansible.builtin.uri:
     url: "{{ jenkins_url }}/login"
     method: GET

@@ -1,8 +1,8 @@
 - name: Preflight check
-  import_tasks: preflight-check.yml
+  ansible.builtin.import_tasks: preflight-check.yml
 
 - name: Install Jenkins
-  import_tasks: setup-jenkins.yml
+  ansible.builtin.import_tasks: setup-jenkins.yml
 
 - name: Final Check
-  import_tasks: final-check.yml
+  ansible.builtin.import_tasks: final-check.yml

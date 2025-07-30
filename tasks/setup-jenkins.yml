@@ -3,8 +3,8 @@
     name: jenkins
     state: present
   notify:
-    - start jenkins
-    - wait for jenkins
+    - Start jenkins
+    - Wait for jenkins
 
 - name: Create Jenkins directories
   ansible.builtin.file:
@@ -26,8 +26,8 @@
     - regexp: '^HTTP_HOST='
       line: 'HTTP_HOST=0.0.0.0'
   notify:
-    - restart jenkins
-    - wait for jenkins
+    - Restart jenkins
+    - Wait for jenkins
 
 - name: Disable setup wizard
   ansible.builtin.copy:
@@ -50,8 +50,8 @@
     - src: 02-plugins.groovy.j2
       dest: /var/lib/jenkins/init.groovy.d/02-plugins.groovy
   notify:
-    - restart jenkins
-    - wait for jenkins
+    - Restart jenkins
+    - Wait for jenkins
 
 - name: Remove init scripts after first run
   ansible.builtin.file:
