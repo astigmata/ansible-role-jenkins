@@ -1,21 +1,20 @@
-- name: Restart jenkins
+---
+- name: restart jenkins
+  become: true
   ansible.builtin.systemd:
     name: jenkins
     state: restarted
+    daemon_reload: true
+  listen: restart jenkins
 
-- name: Start jenkins
-  ansible.builtin.systemd:
-    name: jenkins
-    state: started
-    enabled: true
-
-- name: Wait for jenkins
+- name: wait for jenkins
   ansible.builtin.uri:
     url: "{{ jenkins_url }}/login"
     method: GET
-    status_code: 200
-    timeout: 5
+    status_code: [200, 403]
+    timeout: 10
   register: result
-  until: result.status == 200
+  until: result.status in [200, 403]
   retries: 60
   delay: 5
+  listen: restart jenkins

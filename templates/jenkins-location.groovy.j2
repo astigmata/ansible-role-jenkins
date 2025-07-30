@@ -1,0 +1,14 @@
+#!groovy
+import jenkins.model.*
+
+def instance = Jenkins.getInstance()
+
+// Configure Jenkins URL
+def config = JenkinsLocationConfiguration.get()
+config.setUrl("{{ jenkins_url }}/")
+config.save()
+
+// Save instance configuration
+instance.save()
+
+println "Jenkins URL configuration completed"

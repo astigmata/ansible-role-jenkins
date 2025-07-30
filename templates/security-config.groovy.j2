@@ -1,0 +1,33 @@
+#!groovy
+import jenkins.model.*
+import hudson.security.*
+import jenkins.security.s2m.AdminWhitelistRule
+
+def instance = Jenkins.getInstance()
+
+// Configure security realm
+def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+hudsonRealm.createAccount("{{ jenkins_admin_user }}", "{{ jenkins_admin_password }}")
+instance.setSecurityRealm(hudsonRealm)
+
+// Configure authorization strategy
+{% if jenkins_authorization_strategy == "FullControlOnceLoggedInAuthorizationStrategy" %}
+def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+strategy.setAllowAnonymousRead({{ jenkins_anonymous_access | lower }})
+{% elif jenkins_authorization_strategy == "GlobalMatrixAuthorizationStrategy" %}
+def strategy = new GlobalMatrixAuthorizationStrategy()
+strategy.add(Jenkins.ADMINISTER, "{{ jenkins_admin_user }}")
+{% endif %}
+instance.setAuthorizationStrategy(strategy)
+
+// Disable CLI over remoting
+instance.getDescriptor("jenkins.CLI").get().setEnabled(false)
+
+// Enable Agent → Master Access Control
+instance.getInjector().getInstance(AdminWhitelistRule.class)
+    .setMasterKillSwitch(false)
+
+// Save configuration
+instance.save()
+
+println "Security configuration completed successfully"

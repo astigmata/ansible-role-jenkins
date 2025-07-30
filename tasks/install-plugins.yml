@@ -1,0 +1,66 @@
+---
+- name: Get Jenkins crumb for API calls
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)"
+    method: GET
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: jenkins_crumb
+  retries: 3
+  delay: 10
+  until: jenkins_crumb.status == 200
+
+- name: Check installed plugins
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/pluginManager/api/json?depth=1"
+    method: GET
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: jenkins_installed_plugins
+
+- name: Set fact for installed plugin names
+  ansible.builtin.set_fact:
+    jenkins_installed_plugin_names: "{{ jenkins_installed_plugins.json.plugins | map(attribute='shortName') | list }}"
+
+- name: Install Jenkins plugins
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/pluginManager/installNecessaryPlugins"
+    method: POST
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_admin_password }}"
+    force_basic_auth: true
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+      "{{ jenkins_crumb.content.split(':')[0] }}": "{{ jenkins_crumb.content.split(':')[1] }}"
+    body_format: form-urlencoded
+    body:
+      plugin.{{ item }}.default: "on"
+    status_code: [200, 302]
+    timeout: "{{ jenkins_plugins_timeout }}"
+  loop: "{{ jenkins_plugins }}"
+  when: item not in jenkins_installed_plugin_names
+  register: jenkins_plugin_install
+  notify:
+    - restart jenkins
+
+- name: Wait for plugin installation to complete
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/updateCenter/api/json"
+    method: GET
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_admin_password }}"
+    force_basic_auth: true
+    return_content: true
+  register: jenkins_update_center
+  retries: 60
+  delay: 5
+  until: jenkins_update_center.json.jobs | length == 0
+  when: jenkins_plugin_install is changed
+
+- name: Restart Jenkins after plugin installation
+  ansible.builtin.meta: flush_handlers
+  when: jenkins_plugin_install is changed

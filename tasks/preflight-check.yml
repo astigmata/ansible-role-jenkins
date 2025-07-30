@@ -1,22 +1,72 @@
-- name: Install prerequisites
+---
+- name: Validate admin password strength
+  ansible.builtin.assert:
+    that:
+      - jenkins_admin_password | length >= 8
+      - jenkins_admin_password != "admin123"
+    fail_msg: "Jenkins admin password must be at least 8 characters and not default"
+
+- name: Install Java prerequisites
+  become: true
+  ansible.builtin.package:
+    name: "{{ jenkins_java_package }}"
+    state: present
+  vars:
+    jenkins_java_package: >-
+      {%- if ansible_os_family == 'Debian' -%}
+      openjdk-17-jdk
+      {%- elif ansible_os_family == 'RedHat' -%}
+      java-17-openjdk
+      {%- else -%}
+      openjdk-17-jdk
+      {%- endif -%}
+
+- name: Install required packages
+  become: true
   ansible.builtin.package:
     name:
-      - "{{ 'openjdk-21-jdk' if ansible_os_family == 'Debian' else 'java-21-openjdk' }}"
       - wget
       - curl
+      - gnupg
     state: present
 
 - name: Configure Jenkins repository (Debian/Ubuntu)
+  become: true
   when: ansible_os_family == "Debian"
   block:
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        path: /usr/share/keyrings
+        state: directory
+        mode: '0755'
+
     - name: Add Jenkins GPG key
       ansible.builtin.get_url:
-        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        url: "{{ jenkins_repo_key_url }}"
         dest: /usr/share/keyrings/jenkins-keyring.asc
         mode: '0644'
 
     - name: Add Jenkins repository
       ansible.builtin.apt_repository:
-        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] {{ jenkins_repo_url }} binary/"
         state: present
         filename: jenkins
+        update_cache: true
+
+- name: Configure Jenkins repository (RHEL/CentOS)
+  become: true
+  when: ansible_os_family == "RedHat"
+  block:
+    - name: Add Jenkins repository key
+      ansible.builtin.rpm_key:
+        key: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+        state: present
+
+    - name: Add Jenkins repository
+      ansible.builtin.yum_repository:
+        name: jenkins
+        description: Jenkins-stable
+        baseurl: http://pkg.jenkins.io/redhat-stable
+        gpgcheck: true
+        gpgkey: https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+        enabled: true

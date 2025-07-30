@@ -1,0 +1,44 @@
+---
+- name: Verify Jenkins service is running
+  ansible.builtin.systemd:
+    name: jenkins
+  register: jenkins_service_status
+
+- name: Assert Jenkins service is active
+  ansible.builtin.assert:
+    that:
+      - jenkins_service_status.status.ActiveState == "active"
+    fail_msg: "Jenkins service is not running"
+
+- name: Verify Jenkins web interface is accessible
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/login"
+    method: GET
+    status_code: [200, 403]
+    timeout: 10
+  register: jenkins_web_status
+
+- name: Assert Jenkins web interface is accessible
+  ansible.builtin.assert:
+    that:
+      - jenkins_web_status.status in [200, 403]
+    fail_msg: "Jenkins web interface is not accessible"
+
+- name: Verify admin user authentication
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/me/api/json"
+    method: GET
+    user: "{{ jenkins_admin_user }}"
+    password: "{{ jenkins_admin_password }}"
+    force_basic_auth: true
+    status_code: 200
+  register: jenkins_auth_test
+
+- name: Display Jenkins access information
+  ansible.builtin.debug:
+    msg:
+      - "Jenkins is successfully deployed and configured"
+      - "URL: {{ jenkins_url }}"
+      - "Username: {{ jenkins_admin_user }}"
+      - "Service Status: {{ jenkins_service_status.status.ActiveState }}"
+      - "Installed Plugins: {{ jenkins_plugins | length }} plugins configured"
