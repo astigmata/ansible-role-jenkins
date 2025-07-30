@@ -42,13 +42,13 @@
   changed_when: "'installed' in jenkins_plugin_install_cli.stdout or jenkins_plugin_install_cli.rc == 0"
   failed_when: jenkins_plugin_install_cli.rc != 0 and 'already installed' not in jenkins_plugin_install_cli.stderr
   notify:
-    - restart jenkins
+    - Restart jenkins
 
-- name: Restart Jenkins if plugins were installed
+- name: Restart jenkins if plugins were installed
   ansible.builtin.meta: flush_handlers
   when: jenkins_plugin_install_cli is changed
 
-- name: Wait for Jenkins after plugin installation
+- name: Wait for jenkins after plugin installation
   ansible.builtin.uri:
     url: "{{ jenkins_url }}/login"
     method: GET

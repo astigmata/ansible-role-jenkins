@@ -5,7 +5,7 @@
     name: jenkins
     state: present
   notify:
-    - restart jenkins
+    - Restart jenkins
 
 - name: Create Jenkins directories
   become: true
@@ -45,7 +45,7 @@
       /etc/default/jenkins
       {%- endif -%}
   notify:
-    - restart jenkins
+    - Restart jenkins
 
 - name: Disable setup wizard
   become: true
@@ -56,7 +56,7 @@
     group: jenkins
     mode: '0644'
   notify:
-    - restart jenkins
+    - Restart jenkins
 
 - name: Start and enable Jenkins service
   become: true

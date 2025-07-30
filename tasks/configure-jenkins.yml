@@ -1,5 +1,5 @@
 ---
-- name: Wait for Jenkins to start
+- name: Wait for jenkins to start
   ansible.builtin.uri:
     url: "{{ jenkins_url }}/login"
     method: GET
@@ -32,7 +32,7 @@
     mode: '0644'
   when: not jenkins_admin_user_config.stat.exists
   notify:
-    - restart jenkins
+    - Restart jenkins
 
 - name: Create Jenkins URL configuration
   become: true
@@ -44,12 +44,12 @@
     mode: '0644'
   when: not jenkins_config_file.stat.exists
   notify:
-    - restart jenkins
+    - Restart jenkins
 
-- name: Restart Jenkins if configuration changed
+- name: Restart jenkins if configuration changed
   ansible.builtin.meta: flush_handlers
 
-- name: Wait for Jenkins after configuration
+- name: Wait for jenkins after configuration
   ansible.builtin.uri:
     url: "{{ jenkins_url }}/login"
     method: GET
