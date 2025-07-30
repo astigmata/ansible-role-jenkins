@@ -3,3 +3,6 @@
 
 - name: Install Jenkins
   import_tasks: setup-jenkins.yml
+
+- name: Final Check
+  import_tasks: final-check.yml
