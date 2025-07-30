@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  author: astigmata
+  role_name: jenkins
+  namespace: astigmata
+  description: Deploy jenkins
+  license: MIT
+  min_ansible_version: "2.12"
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - "all"
+    - name: Debian
+      versions:
+        - "all"
+
+  galaxy_tags:
+    - jenkins
+    - automation
+    - ci
+
+dependencies: []
