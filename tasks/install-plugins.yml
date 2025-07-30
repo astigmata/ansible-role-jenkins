@@ -1,16 +1,21 @@
 ---
 - name: Get Jenkins crumb for API calls
   ansible.builtin.uri:
-    url: "{{ jenkins_url }}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)"
+    url: "{{ jenkins_url }}/crumbIssuer/api/json"
     method: GET
     user: "{{ jenkins_admin_user }}"
     password: "{{ jenkins_admin_password }}"
     force_basic_auth: true
     return_content: true
-  register: jenkins_crumb
+  register: jenkins_crumb_response
   retries: 3
   delay: 10
-  until: jenkins_crumb.status == 200
+  until: jenkins_crumb_response.status == 200
+
+- name: Set crumb facts
+  ansible.builtin.set_fact:
+    jenkins_crumb_field: "{{ jenkins_crumb_response.json.crumbRequestField }}"
+    jenkins_crumb_value: "{{ jenkins_crumb_response.json.crumb }}"
 
 - name: Check installed plugins
   ansible.builtin.uri:
@@ -35,7 +40,7 @@
     force_basic_auth: true
     headers:
       Content-Type: "application/x-www-form-urlencoded"
-      "{{ jenkins_crumb.content.split(':')[0] }}": "{{ jenkins_crumb.content.split(':')[1] }}"
+      "{{ jenkins_crumb_field }}": "{{ jenkins_crumb_value }}"
     body_format: form-urlencoded
     body:
       plugin.{{ item }}.default: "on"
