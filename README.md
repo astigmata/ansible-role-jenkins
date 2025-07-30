@@ -7,7 +7,7 @@ Ansible role for deploying and configuring Jenkins CI/CD server with security be
 - ✅ Multi-OS support (Debian/Ubuntu, RHEL/CentOS)
 - ✅ Idempotent operations
 - ✅ Security hardening
-- ✅ Plugin management via API
+- ✅ Plugin management via jenkins-cli
 - ✅ Configurable authentication
 - ✅ ansible-lint compliant
 
@@ -35,7 +35,9 @@ jenkins_url: "http://{{ jenkins_host }}:{{ jenkins_port }}"
 jenkins_java_options: "-Djava.awt.headless=true -Xmx2g"
 ```
 
-### Plugin Management
+## Plugin Management
+
+The role installs plugins using jenkins-cli for maximum compatibility:
 
 ```yaml
 jenkins_plugins:
@@ -48,6 +50,15 @@ jenkins_plugins:
 
 jenkins_plugins_timeout: 300
 ```
+
+**Plugin Installation Process:**
+1. Downloads jenkins-cli.jar from Jenkins instance
+2. Lists currently installed plugins
+3. Installs missing plugins with dependencies
+4. Restarts Jenkins if plugins were installed
+5. Cleans up CLI jar file
+
+**Note:** Plugin installation requires Jenkins restart, handled automatically by the role.
 
 ### Security Settings
 
@@ -139,7 +150,8 @@ molecule test
 
 **Plugin installation fails:**
 - Verify internet connectivity
-- Check Jenkins update center: `{{ jenkins_url }}/pluginManager/advanced`
+- Check Java installation: `java -version`
+- Test CLI manually: `java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth admin:password help`
 - Increase `jenkins_plugins_timeout` value
 
 **Authentication issues:**
@@ -156,8 +168,11 @@ systemctl status jenkins
 # Web interface
 curl -I http://localhost:8080/login
 
-# API test
-curl -u admin:password http://localhost:8080/api/json
+# CLI test
+java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth admin:password who-am-i
+
+# Plugin list
+java -jar /tmp/jenkins-cli.jar -s http://localhost:8080 -auth admin:password list-plugins
 ```
 
 ## License
