@@ -1,0 +1,22 @@
+# handlers/main.yml
+- name: restart jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    state: restarted
+
+- name: start jenkins
+  ansible.builtin.systemd:
+    name: jenkins
+    state: started
+    enabled: true
+
+- name: wait for jenkins
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/login"
+    method: GET
+    status_code: 200
+    timeout: 5
+  register: result
+  until: result.status == 200
+  retries: 60
+  delay: 5

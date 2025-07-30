@@ -1,0 +1,5 @@
+- name: Preflight check
+  import_tasks: preflight-check.yml
+
+- name: Install Jenkins
+  import_tasks: setup-jenkins.yml

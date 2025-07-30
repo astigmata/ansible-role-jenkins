@@ -1,0 +1,22 @@
+- name: Install prerequisites
+  ansible.builtin.package:
+    name:
+      - "{{ 'openjdk-21-jdk' if ansible_os_family == 'Debian' else 'java-21-openjdk' }}"
+      - wget
+      - curl
+    state: present
+
+- name: Configure Jenkins repository (Debian/Ubuntu)
+  when: ansible_os_family == "Debian"
+  block:
+    - name: Add Jenkins GPG key
+      ansible.builtin.get_url:
+        url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+        dest: /usr/share/keyrings/jenkins-keyring.asc
+        mode: '0644'
+
+    - name: Add Jenkins repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/"
+        state: present
+        filename: jenkins

@@ -1,0 +1,23 @@
+#!groovy
+import jenkins.model.*
+import hudson.security.*
+
+def instance = Jenkins.getInstance()
+
+// Security configuration
+def hudsonRealm = new HudsonPrivateSecurityRealm(false)
+hudsonRealm.createAccount("{{ jenkins_admin_user }}", "{{ jenkins_admin_password }}")
+instance.setSecurityRealm(hudsonRealm)
+
+def strategy = new FullControlOnceLoggedInAuthorizationStrategy()
+strategy.setAllowAnonymousRead(false)
+instance.setAuthorizationStrategy(strategy)
+
+// Jenkins URL
+def config = JenkinsLocationConfiguration.get()
+config.setUrl("{{ jenkins_url }}/")
+config.save()
+
+instance.save()
+
+println "Security configuration completed"

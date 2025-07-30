@@ -1,0 +1,45 @@
+#!groovy
+import jenkins.model.*
+import hudson.model.*
+
+def instance = Jenkins.getInstance()
+def pm = instance.getPluginManager()
+def uc = instance.getUpdateCenter()
+
+def plugins = [
+'git',
+'workflow-aggregator',
+'pipeline-stage-view',
+'credentials-binding',
+'timestamper',
+'ws-cleanup'
+]
+
+// Force update center refresh
+uc.updateAllSites()
+
+// Wait for update center
+def maxRetries = 30
+def retries = 0
+while (!uc.isSiteDataReady() && retries < maxRetries) {
+Thread.sleep(2000)
+retries++
+}
+
+def installed = false
+plugins.each { pluginName ->
+if (!pm.getPlugin(pluginName)) {
+  println "Installing: ${pluginName}"
+  def plugin = uc.getPlugin(pluginName)
+  if (plugin) {
+    def future = plugin.deploy()
+    future.get()
+    installed = true
+  }
+}
+}
+
+if (installed) {
+instance.save()
+println "Plugins installed"
+}
