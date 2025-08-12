@@ -28,6 +28,7 @@
     line: "{{ item.line }}"
     backup: true
     create: true
+    mode: '0644'
   loop:
     - regexp: '^JAVA_ARGS='
       line: 'JAVA_ARGS="{{ jenkins_java_options }}"'
@@ -38,12 +39,9 @@
   vars:
     jenkins_defaults_file: >-
       {%- if ansible_os_family == 'Debian' -%}
-      /etc/default/jenkins
-      {%- elif ansible_os_family == 'RedHat' -%}
-      /etc/sysconfig/jenkins
-      {%- else -%}
-      /etc/default/jenkins
-      {%- endif -%}
+      /etc/default/jenkins{%- elif ansible_os_family == 'RedHat' -%}
+      /etc/sysconfig/jenkins{%- else -%}
+      /etc/default/jenkins{%- endif -%}
   notify:
     - Restart jenkins
 

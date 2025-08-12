@@ -14,12 +14,9 @@
   vars:
     jenkins_java_package: >-
       {%- if ansible_os_family == 'Debian' -%}
-      openjdk-17-jdk
-      {%- elif ansible_os_family == 'RedHat' -%}
-      java-17-openjdk
-      {%- else -%}
-      openjdk-17-jdk
-      {%- endif -%}
+      openjdk-17-jdk{%- elif ansible_os_family == 'RedHat' -%}
+      java-17-openjdk{%- else -%}
+      openjdk-17-jdk{%- endif -%}
 
 - name: Install required packages
   become: true
