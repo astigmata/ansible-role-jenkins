@@ -36,3 +36,6 @@ jenkins_repo_url: "https://pkg.jenkins.io/debian-stable"
 # Service management
 jenkins_service_enabled: true
 jenkins_service_state: started
+
+# Verification
+jenkins_skip_verification: false

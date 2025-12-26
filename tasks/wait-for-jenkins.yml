@@ -1,0 +1,17 @@
+---
+# Reusable task to wait for Jenkins to become available
+# Variables:
+#   jenkins_wait_retries: Number of retries (default: 60)
+#   jenkins_wait_delay: Delay between retries in seconds (default: 5)
+#   jenkins_wait_timeout: HTTP request timeout in seconds (default: 10)
+
+- name: Wait for Jenkins to become available
+  ansible.builtin.uri:
+    url: "{{ jenkins_url }}/login"
+    method: GET
+    status_code: [200, 403]
+    timeout: "{{ jenkins_wait_timeout | default(10) }}"
+  register: jenkins_service_status
+  retries: "{{ jenkins_wait_retries | default(60) }}"
+  delay: "{{ jenkins_wait_delay | default(5) }}"
+  until: jenkins_service_status.status in [200, 403]

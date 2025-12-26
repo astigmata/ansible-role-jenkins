@@ -22,19 +22,13 @@
 
 - name: Configure Jenkins startup options
   become: true
-  ansible.builtin.lineinfile:
-    path: "{{ jenkins_defaults_file }}"
-    regexp: "{{ item.regexp }}"
-    line: "{{ item.line }}"
+  ansible.builtin.template:
+    src: jenkins-defaults.j2
+    dest: "{{ jenkins_defaults_file }}"
+    owner: root
+    group: root
+    mode: '0644'
     backup: true
-    create: true
-  loop:
-    - regexp: '^JAVA_ARGS='
-      line: 'JAVA_ARGS="{{ jenkins_java_options }}"'
-    - regexp: '^HTTP_HOST='
-      line: 'HTTP_HOST=0.0.0.0'
-    - regexp: '^HTTP_PORT='
-      line: 'HTTP_PORT={{ jenkins_port }}'
   vars:
     jenkins_defaults_file: >-
       {%- if ansible_os_family == 'Debian' -%}
