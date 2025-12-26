@@ -7,14 +7,9 @@
     daemon_reload: true
   listen: Restart jenkins
 
-- name: Wait for jenkins
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/login"
-    method: GET
-    status_code: [200, 403]
-    timeout: 10
-  register: result
-  until: result.status in [200, 403]
-  retries: 60
-  delay: 5
+- name: Wait for Jenkins after restart
+  ansible.builtin.include_tasks: tasks/wait-for-jenkins.yml
+  vars:
+    jenkins_wait_retries: 40
+    jenkins_wait_delay: 3
   listen: Restart jenkins

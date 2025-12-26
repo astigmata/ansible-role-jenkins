@@ -29,18 +29,25 @@
         | list
       }}
 
-- name: Install Jenkins plugins via CLI
+- name: Determine plugins to install
+  ansible.builtin.set_fact:
+    jenkins_plugins_to_install: >-
+      {{
+        jenkins_plugins
+        | difference(jenkins_installed_plugin_names)
+        | list
+      }}
+
+- name: Install Jenkins plugins via CLI (batch)
   become: true
   ansible.builtin.command:
     cmd: >
       java -jar /tmp/jenkins-cli.jar -s {{ jenkins_url }}
       -auth {{ jenkins_admin_user }}:{{ jenkins_admin_password }}
-      install-plugin {{ item }}
-  loop: "{{ jenkins_plugins }}"
-  when: item not in jenkins_installed_plugin_names
+      install-plugin {{ jenkins_plugins_to_install | join(' ') }}
+  when: jenkins_plugins_to_install | length > 0
   register: jenkins_plugin_install_cli
-  changed_when: "'installed' in jenkins_plugin_install_cli.stdout or jenkins_plugin_install_cli.rc == 0"
-  failed_when: jenkins_plugin_install_cli.rc != 0 and 'already installed' not in jenkins_plugin_install_cli.stderr
+  changed_when: jenkins_plugin_install_cli.rc == 0
   notify:
     - Restart jenkins
 
@@ -48,16 +55,11 @@
   ansible.builtin.meta: flush_handlers
   when: jenkins_plugin_install_cli is changed
 
-- name: Wait for jenkins after plugin installation
-  ansible.builtin.uri:
-    url: "{{ jenkins_url }}/login"
-    method: GET
-    status_code: [200, 403]
-    timeout: 10
-  register: jenkins_service_status
-  retries: 30
-  delay: 10
-  until: jenkins_service_status.status in [200, 403]
+- name: Wait for Jenkins after plugin installation
+  ansible.builtin.include_tasks: wait-for-jenkins.yml
+  vars:
+    jenkins_wait_retries: 30
+    jenkins_wait_delay: 10
   when: jenkins_plugin_install_cli is changed
 
 - name: Clean up jenkins-cli.jar
